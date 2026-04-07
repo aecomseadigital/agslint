@@ -24,3 +24,5 @@ temp/
 
 .env
 .env.*
+
+PLANS.md
