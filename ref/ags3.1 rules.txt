@@ -1,0 +1,147 @@
+﻿APPENDIX 2 Rules for AGS Format (According to AGS 3.1) 
+
+RULES 
+The Rules are set to explain the overall framework which AGS data files are formulated. 
+The data files do not replace the printed reports which they accompany. However, the layout does allow data items to be readily identified should the need arise. 
+The rules as per AGS 3.1 must be used when creating an AGS data files and they are reproduced below for easy of reference. 
+
+Rule 1 
+The data file shall be entirely composed of ASCII characters. The extended ASCII character set must not be used. 
+Rule 2 
+Each data file shall contain one or more data GROUPs. Each data GROUP contains related data. 
+Rule 3 
+Within each GROUP, data items are contained in data FIELDs.
+Each data FIELD contains a single data VARIABLE. Each line of the AGS Format file can contain several data FIELDs. 
+Rule 4
+The order of data FIELDs on each line within a GROUP is defined at the head of each GROUP by a set of data HEADINGs.
+Rule 5 
+Data HEADINGs and GROUP names must be taken from the approved Data Dictionary for data covered by these. 
+In cases where there is no suitable entry, a user-defined HEADING may be used in accordance with Rules 21, 22 and 23. 
+Rule 6 
+The data HEADINGs fall into one of 2 categories: KEY or COMMON 
+KEY fields must appear in each GROUP, but may contain null data (see Rule 15) KEY fields are necessary to uniquely define the data. 
+The following sub-rules apply to KEY fields and are required to ensure Data Integrity. (See Note 3) 
+Rule 6a 
+*HOLE_ID should always be the first field except in the **PROJ GROUP, where *PROJ_ID should be the first field. *HOLE_ID is also omitted from the **ABBR, **DICT, **UNIT and **FILE GROUPs. 
+Rule 6b 
+There must not be more than one line of data in each GROUP with the same combination of 
+KEY field entries. 
+Rule 6c 
+Within each project every data entry made in the KEY fields in any GROUP must have an equivalent entry in its PARENT GROUP. 
+e.g. All HOLES referenced in any GROUP must be defined in the **HOLE GROUP. See GROUP HIERARCHY in Section 5.9. 
+Rule 7 
+All data VARIABLEs can contain any alphanumeric data (i.e. both text and numbers). 
+Numerical data should be in numerals. e.g. 10 not TEN. (See also Note 2). 
+Note that all numerals must be presented as a text field. 
+Rule 8 
+Data GROUP names, data field HEADINGs and data VARIABLEs must be enclosed in double quotes ("..."). 
+e.g. for inches or seconds, (") must not appear as part of the data variable. 
+Rule 9 
+The data field HEADINGs and data VARIABLEs on each line of the data file should be separated by a comma (,). 
+Rule 10 
+Each GROUP name shall be preceded by 2 asterisks (**). 
+e.g. "**HOLE" 
+Rule 11 
+HEADINGs shall be preceded by 1 asterisk (*). e.g. "*HOLE_ID" 
+Rule 12 
+No line of data HEADINGs or data VARIABLEs shall exceed 240 characters. 
+The character count should include delimiting quotes and commas. 
+e.g. "*HOLE_ID","*HOLE_NATE" = 23 characters 
+Rule 13 
+A line of data HEADINGs exceeding 240 characters can be continued on immediately following lines. 
+A data HEADING must not itself be split between lines. 
+A comma must be placed at the end of a HEADINGs line that is to be continued. 
+e.g."*HOLE_ID","*SAMP_TOP","*SAMP_REF","*SPEC_REF","*CLSS_LL","*CLSS_PL","*CLSS
+_BDEN" 
+Rule 14 
+A line of data VARIABLEs exceeding 240 characters must be continued on immediately following lines. Data VARIABLEs can be split between lines. A VARIABLE continuation line 
+shall begin with the special name <CONT> in place of the first data VARIABLE (PROJ_ID or HOLE_ID). The continued data is then placed in the correct field order by inserting the appropriate number of Null data VARIABLEs before it. 
+Note that each line of data in a GROUP should contain the same number of VARIABLEs. (See also Note 4). 
+e.g."**GEOL","*HOLE_ID","*GEOL_TOP","*GEOL_BASE","*GEOL_DESC","*GEOL_LEG" <UNITS>,"m","m","","" 
+501,"1.2","2.4","Very stiff brown CLAY with","" 
+<CONT>,"","","extremely closely spaced fissures","CLAY" 
+Rule 15 
+Null data VARIABLEs must be included as 2 consecutive double quotes (“”). e.g."", 
+Rule 16 
+Data GROUPs can be repeated within a file with different HEADINGs. 
+Rule 17 
+The number of data HEADINGs per GROUP shall not exceed 60. 
+Rule 18 
+A UNITS line must be placed immediately after the HEADINGS line in all GROUPs except **ABBR, **CODE, **DICT and **UNIT. 
+An entry must be made for each data VARIABLE. 
+Null entries ("") must be used for data VARIABLES that are unit-less, e.g. text. 
+The line must begin with the special name <UNITS> in place of the first data variable (PROJ_ID or HOLE_ID). (See also Note 5) 
+e.g. "**GEOL" 
+*HOLE_ID,"*GEOL_TOP","*GEOL_BASE","*GEOL_DESC" <UNITS>,"m","m","" 
+Rule 18a 
+A line of UNITS exceeding 240 characters can be continued on immediately following lines. A UNIT must not itself be split between lines. A comma must be placed at the end of a UNITS line that is to be continued. 
+e.g. "**GEOL" 
+*HOLE_ID,"*GEOL_TOP","*GEOL_BASE","*GEOL_DESC" <UNITS>,"m","m","" 
+Rule 18b 
+Each data file shall contain the **UNIT GROUP. See Section 11 for the **UNIT GROUP defining the units used. This GROUP uses units defined in the ‘pick’ list in Appendix 3 which contains all the standard SI units used in all other AGS GROUPs, as well as some common non-SI equivalents. 
+Every UNIT entered in a <UNITS> line of a GROUP, the CNMT UNIT field of the CNMT GROUP and the ?ICCT_UNIT field in the ?ICCT GROUP must be defined in the **UNIT GROUP. Both standard and non-standard UNITS must be defined in the **UNIT GROUP. 
+Rule 19 
+Each data file shall contain the **PROJ GROUP 
+Rule 20 
+Each data file shall contain the **ABBR GROUP to define any data abbreviations where these have been used as data entries in the data GROUPs. 
+This applies to standard abbreviations selected from the lists of codes and abbreviations in Appendix 3 and user defined abbreviations. 
+Rule 21 
+Each file shall contain the **DICT GROUP to define non-standard GROUP and HEADING names where these have been used in the data GROUPs. 
+Rule 22 
+Each non-standard GROUP name shall contain the prefix **?. 
+A GROUP name shall not be more than 4 characters long excluding the **? prefix and shall consist of uppercase letters only. 
+e.g. “**?TESX” 
+Rule 23 
+Each non-standard HEADING shall contain the prefix *?. 
+A HEADING name shall not be more than 9 characters long excluding the *? prefix and shall consist of uppercase letters, numbers or the underscore character only. 
+HEADING names shall start with the GROUP name followed by an underscore character, except for HEADINGs which duplicate a HEADING in another GROUP, in which case this HEADING shall be used instead. 
+e.g. “*?ISPT_CALN” 
+Rule 24 
+Miscellaneous computer files (e.g. digital images) may be included with a data file. 
+Each such file should be defined in a FILE GROUP. 
+File names shall not contain more than 8 characters in the main body and not more than 3 characters in the extension. 
+Correct example: FNAME.XLS 
+Incorrect example: A LONG NAME.XYZ 
+Rule 25 
+Every data file that contains a **CNMT or **?ICCT GROUP for chemical test results must also contain a **CODE GROUP that defines the codes used for each determinand given in the CNMT_TYPE field of the **CNMT or **?ICCT GROUP. 
+This applies to standard codes selected from the ‘pick’ lists in Appendix 3 and user defined codes 
+
+Notes on the Rules 
+The following notes explain some points of detail in the Rules: 
+Note 1 – ASCII 'CSV' Files 
+The Rules define ASCII data files of a type commonly referred to as CSV (Comma Separated 
+Value). This type of file is produced and read by some spreadsheet (and other) systems. The 
+data items are separated by commas and are surrounded by quotes ("). 
+Note 2 – Numeric and Character Data - Delimiters 
+The Rules permit any Data Field to contain text, since this allows characters in numeric fields and caters for those countries which use the comma in place of the decimal point. 
+For these reasons ALL Data Fields must be surrounded by quotes. 
+Note that most spreadsheet and database systems provide a VALUE ( ) function (or similar) to convert text data to numeric data. 
+This function can be used where calculations need to be carried out on data imported from AGS files. 
+Note 3 – Key and Common Fields 
+The Data Fields defined by the Format fall into one of two categories: 
+KEY Fields must be included every time a Data Group appears in a data file. 
+COMMON Fields are all other fields. 
+KEY Fields are important for maintaining data integrity. 
+Without this the receiving software may not be able to use the data in a meaningful way. 
+For the purpose of creating AGS files this means that data entered into KEY Fields must be unique in each GROUP and that the corresponding entries are made in the PARENT GROUP. 
+See GROUP HIERARCHY TABLE in Appendix 1. 
+Note 4 – Continuation Lines 
+It should be noted that some spreadsheets impose a finite limit (e.g. 240) on the number of characters within a single Data Field. 
+The Rules define a scheme for producing continuation lines where there are long Data Fields. 
+Although the scheme may seem complex at first sight, it is the system automatically produced by spreadsheets if the long data items are continued on additional rows IN THE SAME DATA COLUMN. 
+Similarly, these Data Files will read into spreadsheets and preserve the long data items in their correct column order, for any length of data. 
+The special <CONT> symbol must appear in the HOLE_ID Field, and thus <CONT> should never be used as a HOLE_ID. 
+Note 5 – Units 
+Note that a UNITS line must be included in every GROUP (except ABBR, DICT and UNIT) even where the default units are used. 
+Details of the default units to be used for each of the Data Fields are given in the Data Dictionary. 
+These are the preferred units for each of the data dictionary definitions and should be used wherever possible. 
+They will either be the appropriate SI units or the unit defined by the particular British Standard relating to that specific item of data. 
+It is recognised that situations will occur where neither the SI unit nor the British Standard unit are being used. 
+All entries in the <UNITS> line must be defined in the **UNIT GROUP. 
+Note 6 – Associated files 
+Where other digital files or file sets are associated with data, the file association should be made with the relevant data type and record. 
+For example: 
+• Site location plans would be associated with the PROJ group. 
+• Photographs of core should be recorded against the core run records within the CORE group. 
+• Sample logging sheets if included with the data file would be associated with the SAMP group and against the relevant sample. 
+• Logging files from in situ tests should be associated with the appropriate test group. 

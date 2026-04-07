@@ -1,0 +1,31 @@
+{
+  "scopeName": "source.ags",
+  "name": "AGS",
+  "patterns": [
+    {
+      "match": "\"(GROUP|HEADING|UNIT|TYPE|DATA)\"",
+      "name": "keyword.control.ags"
+    },
+    {
+      "match": "\"\\*\\*\\??[A-Z0-9]+\"",
+      "name": "entity.name.type.ags"
+    },
+    {
+      "match": "\"\\*\\??[A-Z0-9_]+\"",
+      "name": "entity.name.tag.ags"
+    },
+    {
+      "match": "\"<UNITS>|<CONT>\"",
+      "name": "constant.language.ags"
+    },
+    {
+      "match": "\"(?:[^\"]|\"\")*\"",
+      "name": "string.quoted.double.ags"
+    },
+    {
+      "match": ",",
+      "name": "punctuation.separator.delimiter.ags"
+    }
+  ],
+  "uuid": "d3e75d3f-bcc8-4d0d-a0c7-agslint-local"
+}

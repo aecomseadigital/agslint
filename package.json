@@ -1,0 +1,55 @@
+{
+  "name": "agslint",
+  "displayName": "AGSLint",
+  "description": "Linting and validation for AGS3 and AGS4 files.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:ags",
+    "onCommand:agslint.runLint",
+    "onCommand:agslint.showVersion"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "ags",
+        "aliases": [
+          "AGS",
+          "ags"
+        ],
+        "extensions": [
+          ".ags"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ags",
+        "scopeName": "source.ags",
+        "path": "./syntaxes/ags.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "agslint.runLint",
+        "title": "AGSLint: Run Lint on File"
+      },
+      {
+        "command": "agslint.showVersion",
+        "title": "AGSLint: Show AGS Version"
+      }
+    ]
+  },
+  "scripts": {
+    "build-references": "node ./scripts/build-references.js",
+    "lint-file": "node ./scripts/lint-file.js",
+    "test": "node ./src/test/run-tests.js"
+  }
+}
