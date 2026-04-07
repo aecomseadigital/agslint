@@ -2,6 +2,15 @@
 
 AGSLint is the world's first open-sourced VS Code extension for linting and validating AGS3 and AGS4 `.ags` files for geotechnical engineers. This repo currently targets local and private extension use, with AGS reference data stored in the repo and editor diagnostics provided directly by the extension.
 
+## Tribute
+
+This project is built with clear respect for the AGS Python Library maintained by the AGS Data Format Working Group. Their work on reading, writing, and checking AGS files, together with the surrounding documentation and standards guidance, has materially improved the AGS tooling ecosystem and helped establish a stronger foundation for projects like this one.
+
+References:
+
+- AGS Python Library README: https://gitlab.com/ags-data-format-wg/ags-python-library/-/blob/main/README.md
+- AGS Python Library documentation: https://ags-data-format-wg.gitlab.io/ags-python-library/
+
 ## Current Capabilities
 
 - Registers the `ags` language and `.ags` file extension in VS Code
@@ -47,9 +56,6 @@ To run the extension in VS Code, open this repo in VS Code and start the existin
 
 VSIX packaging and release automation are planned, but the repo does not yet contain a finalized packaging or publishing workflow. The extension manifest still uses a placeholder local publisher and should currently be treated as a local or private extension project.
 
-## Diagnostics
-
-Implemented diagnostics are documented in [DIAGNOSTICS.md](./DIAGNOSTICS.md).
 
 ## Status And Limitations
 
