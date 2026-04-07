@@ -24,6 +24,3 @@ temp/
 
 .env
 .env.*
-
-*.md
-!README.md
