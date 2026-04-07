@@ -21,6 +21,18 @@ The external GitHub remote is treated as the release automation host.
    - there are no pending `.changeset/*.md` files left to consume
 5. The workflow runs `npm ci`, `npm test`, packages `dist/agslint-<version>.vsix`, writes a SHA-256 checksum, tags `v<version>`, and creates a GitHub Release with both artifacts attached.
 
+## Runner Labels
+
+The workflows default to `ubuntu-latest`, which works on GitHub-hosted runners. For internal forges such as `aecom`, set a repository or organization variable named `CI_RUNNER` to the actual runner label exposed by your platform.
+
+Examples:
+
+- `ubuntu-latest` for GitHub-hosted Linux
+- `self-hosted` for a generic self-hosted runner
+- a custom internal label such as `linux`, `ubuntu-22.04`, or whatever your aecom runner is registered with
+
+If `CI_RUNNER` is not set, the workflows fall back to `ubuntu-latest`.
+
 ## Local Fallback Flow
 
 If GitHub Actions is unavailable or you need to release from the internal remote instead, use this sequence locally from `main`:

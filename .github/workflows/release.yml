@@ -14,7 +14,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   version-pr:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER != '' && vars.CI_RUNNER || 'ubuntu-latest' }}
 
     steps:
       - name: Checkout
@@ -42,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   package-release:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER != '' && vars.CI_RUNNER || 'ubuntu-latest' }}
     needs: version-pr
 
     steps:
