@@ -29,13 +29,15 @@ References:
 - `generated/` contains optional derived JSON outputs produced from the reference data
 - `syntaxes/` contains the TextMate grammar for AGS syntax highlighting
 - `scripts/` contains helper scripts for reference generation and file linting
+- `.changeset/` contains pending release notes and Changesets configuration
+- `.github/workflows/` contains CI and release automation
 
 ## Local Development
 
 Install dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 Run the test suite:
@@ -50,16 +52,45 @@ Rebuild the generated reference JSON:
 npm run build-references
 ```
 
+Create a changeset for a pull request that changes shipped behavior or release output:
+
+```bash
+npm run changeset
+```
+
+Build a private VSIX artifact and checksum:
+
+```bash
+npm run package:vsix
+```
+
+Run the release verification flow locally:
+
+```bash
+npm run release:verify
+```
+
 To run the extension in VS Code, open this repo in VS Code and start the existing `Run AGSLint Extension` launch configuration from `.vscode/launch.json`.
 
-## Packaging Status
+## Packaging And Releases
 
-VSIX packaging and release automation are planned, but the repo does not yet contain a finalized packaging or publishing workflow. The extension manifest still uses a placeholder local publisher and should currently be treated as a local or private extension project.
+This repo now packages AGSLint as a private `.vsix` and uses Changesets to manage version bumps and changelog updates.
 
+- VSIX packaging is handled by `@vscode/vsce`
+- packaged artifacts are written to `dist/`
+- release notes are tracked through `.changeset/*.md`
+- `CHANGELOG.md` is the release history source of truth
+- GitHub is set up for automated release PRs and tagged releases from `main`
+- local fallback release steps are documented in [RELEASING.md](./RELEASING.md)
+
+## Diagnostics
+
+Implemented diagnostics are documented in [DIAGNOSTICS.md](./DIAGNOSTICS.md).
 
 ## Status And Limitations
 
-- `package.json` still uses `publisher: "local"`
-- The extension is currently intended for local or private use rather than Marketplace distribution
+- The extension is intentionally packaged for private VSIX distribution, not Marketplace publishing
+- Plain VSIX distribution does not provide VS Code Marketplace-style in-product auto-update
 - Reference data is sourced from files committed under `ref/`
 - `generated/` is rebuildable helper output, not the primary runtime source of truth
+- Packaging and changelog automation assume the configured CI platform is available for workflow execution

@@ -1,0 +1,15 @@
+.changeset/**
+.github/**
+.vscode/**
+.gitignore
+.vscodeignore
+
+dist/**
+generated/**
+scripts/**
+src/test/**
+
+DIAGNOSTICS.md
+PLANS.md
+RELEASING.md
+package-lock.json
