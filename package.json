@@ -3,7 +3,7 @@
   "displayName": "AGSLint",
   "description": "Linting and validation for AGS3 and AGS4 files.",
   "license": "LGPL-3.0-only",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "aecomseadigital",
   "private": false,
   "type": "commonjs",
