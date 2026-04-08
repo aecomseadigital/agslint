@@ -33,7 +33,21 @@ If `CI_RUNNER` is not set, the workflows fall back to `ubuntu-latest`.
 
 ## Local Fallback Flow
 
-If GitHub Actions is unavailable, use this sequence locally from `main`:
+For the common local private-build case, use the one-command helper:
+
+```bash
+npm run release:local
+```
+
+This defaults to a patch bump, updates `package.json`, `package-lock.json`, and `CHANGELOG.md`, then runs tests and builds the VSIX. You can override the bump with:
+
+```bash
+npm run release:local -- minor
+npm run release:local -- major
+npm run release:local -- 0.2.0
+```
+
+If GitHub Actions is unavailable and you need the full manual release sequence from `main`, use this:
 
 ```bash
 npm ci

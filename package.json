@@ -73,6 +73,7 @@
     "changeset": "changeset",
     "lint-file": "node ./scripts/lint-file.js",
     "package:vsix": "node ./scripts/package-vsix.js",
+    "release:local": "node ./scripts/release-local.js",
     "release:notes": "node ./scripts/write-release-notes.js",
     "release:verify": "npm test && npm run package:vsix",
     "release:version": "changeset version",

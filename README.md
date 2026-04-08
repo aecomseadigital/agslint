@@ -64,6 +64,14 @@ Build a private VSIX artifact and checksum:
 npm run package:vsix
 ```
 
+Create a local release build with an automatic version bump:
+
+```bash
+npm run release:local
+```
+
+This defaults to a patch bump. You can also use `npm run release:local -- minor`, `npm run release:local -- major`, or `npm run release:local -- 0.2.0`.
+
 Run the release verification flow locally:
 
 ```bash
