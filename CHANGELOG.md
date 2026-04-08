@@ -1,5 +1,11 @@
 # agslint
 
+## 0.1.1
+
+### Patch Changes
+
+- fdde8fd: Add private VSIX packaging, release docs, and Changesets-based release automation.
+
 ## 0.1.0
 
 ### Patch Changes
