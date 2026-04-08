@@ -19,7 +19,7 @@ test("AGS3 lint detects missing UNITS rows", () => {
 
   const result = lintText(text, { baseDir, version: "3" });
   assert.equal(result.version, "3");
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-UNITS"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.units.missing"));
 });
 
 test("AGS4 lint detects TYPE mismatches", () => {
@@ -29,9 +29,9 @@ test("AGS4 lint detects TYPE mismatches", () => {
     "\"UNIT\",\"\",\"\"",
     "\"TYPE\",\"X\",\"X\"",
     "\"DATA\",\"121415\",\"AGS Test\""
-  ].join("\n");
+  ].join("\r\n");
 
   const result = lintText(text, { baseDir, version: "4" });
   assert.equal(result.version, "4");
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS4-TYPE"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.type.reference-mismatch"));
 });

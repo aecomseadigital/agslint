@@ -115,6 +115,10 @@ function createQuickFix(title, edits) {
   };
 }
 
+function hasCheckId(diagnostic, checkId) {
+  return diagnostic && diagnostic.checkId === checkId;
+}
+
 function buildAgsQuoteFix(text, lintResult, diagnostic) {
   const line = findLine(lintResult.document.lines, diagnostic.line);
   if (!line) {
@@ -300,35 +304,35 @@ function buildAgs4MissingTypeRowFix(text, lintResult, diagnostic, references) {
 function buildQuickFixes(text, lintResult, diagnostic, options = {}) {
   const references = loadReferences(options.baseDir || process.cwd());
 
-  if (diagnostic.code === "AGS-QUOTE") {
+  if (hasCheckId(diagnostic, "ags3.quote.unquoted") || hasCheckId(diagnostic, "ags4.quote.unquoted")) {
     return buildAgsQuoteFix(text, lintResult, diagnostic);
   }
 
-  if (diagnostic.code === "AGS-EMPTY") {
+  if (hasCheckId(diagnostic, "ags3.null.whitespace") || hasCheckId(diagnostic, "ags4.quote.whitespace")) {
     return buildAgsEmptyFix(text, lintResult, diagnostic);
   }
 
-  if (diagnostic.code === "AGS3-UNITS" && diagnostic.message.includes("must start with")) {
+  if (hasCheckId(diagnostic, "ags3.units.first-cell")) {
     return buildAgs3UnitsFirstCellFix(text, lintResult, diagnostic);
   }
 
-  if (diagnostic.code === "AGS3-UNITS" && diagnostic.message.includes("requires a <UNITS> row")) {
+  if (hasCheckId(diagnostic, "ags3.units.missing")) {
     return buildAgs3MissingUnitsFix(text, lintResult, diagnostic, references);
   }
 
-  if (diagnostic.code === "AGS3-CONT") {
+  if (hasCheckId(diagnostic, "ags3.cont.first-cell")) {
     return buildAgs3ContFix(text, lintResult, diagnostic);
   }
 
-  if (diagnostic.code === "AGS3-HEADING-STANDARD") {
+  if (hasCheckId(diagnostic, "ags3.heading.standard")) {
     return buildAgs3HeadingStandardFix(text, lintResult, diagnostic);
   }
 
-  if (diagnostic.code === "AGS4-TYPE" && diagnostic.message.includes("does not match")) {
+  if (hasCheckId(diagnostic, "ags4.type.reference-mismatch")) {
     return buildAgs4TypeMismatchFix(text, lintResult, diagnostic, references);
   }
 
-  if (diagnostic.code === "AGS4-TYPE" && diagnostic.message.includes("must contain a TYPE row")) {
+  if (hasCheckId(diagnostic, "ags4.type.missing-row")) {
     return buildAgs4MissingTypeRowFix(text, lintResult, diagnostic, references);
   }
 

@@ -107,8 +107,56 @@ function parseCsvLine(rawLine, lineNumber) {
   };
 }
 
+function splitLinesDetailed(text) {
+  const lines = [];
+  const hadBom = text.startsWith("\uFEFF");
+  const input = hadBom ? text.slice(1) : text;
+  let lineNumber = 1;
+  let cursor = 0;
+  let start = 0;
+
+  while (cursor < input.length) {
+    if (input[cursor] === "\r" && input[cursor + 1] === "\n") {
+      lines.push({
+        lineNumber,
+        raw: input.slice(start, cursor),
+        eol: "\r\n",
+        hasBom: hadBom && lineNumber === 1
+      });
+      cursor += 2;
+      start = cursor;
+      lineNumber += 1;
+      continue;
+    }
+
+    if (input[cursor] === "\n") {
+      lines.push({
+        lineNumber,
+        raw: input.slice(start, cursor),
+        eol: "\n",
+        hasBom: hadBom && lineNumber === 1
+      });
+      cursor += 1;
+      start = cursor;
+      lineNumber += 1;
+      continue;
+    }
+
+    cursor += 1;
+  }
+
+  lines.push({
+    lineNumber,
+    raw: input.slice(start),
+    eol: "",
+    hasBom: hadBom && lineNumber === 1
+  });
+
+  return lines;
+}
+
 function splitLines(text) {
-  return text.replace(/^\uFEFF/, "").split(/\r?\n/);
+  return splitLinesDetailed(text).map((line) => line.raw);
 }
 
 function countNonAscii(text) {
@@ -125,5 +173,6 @@ function countNonAscii(text) {
 module.exports = {
   countNonAscii,
   parseCsvLine,
-  splitLines
+  splitLines,
+  splitLinesDetailed
 };

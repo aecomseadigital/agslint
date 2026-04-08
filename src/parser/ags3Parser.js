@@ -1,6 +1,7 @@
 "use strict";
 
-const { parseCsvLine, splitLines } = require("../utils/lineParser");
+const { parseCsvLine, splitLinesDetailed } = require("../utils/lineParser");
+const { createRuleDiagnostic } = require("../linter/diagnostics");
 const { normalizeAgs3GroupToken, normalizeAgs3HeadingToken } = require("../references/extractors");
 
 function createLogicalRow(kind, parsedLine) {
@@ -48,12 +49,15 @@ function parseAgs3(text) {
   let currentBlock = null;
   let pendingRow = null;
 
-  for (const [index, rawLine] of splitLines(text).entries()) {
+  for (const sourceLine of splitLinesDetailed(text)) {
+    const rawLine = sourceLine.raw;
     if (!rawLine.trim()) {
       continue;
     }
 
-    const parsedLine = parseCsvLine(rawLine, index + 1);
+    const parsedLine = parseCsvLine(rawLine, sourceLine.lineNumber);
+    parsedLine.eol = sourceLine.eol;
+    parsedLine.hasBom = sourceLine.hasBom;
     document.lines.push(parsedLine);
     document.parseDiagnostics.push(...parsedLine.errors);
 
@@ -85,13 +89,9 @@ function parseAgs3(text) {
     }
 
     if (!currentBlock) {
-      document.parseDiagnostics.push({
-        code: "AGS3-STRUCTURE",
-        message: "Found AGS3 content before a GROUP line.",
-        line: parsedLine.lineNumber,
-        column: 1,
-        endColumn: Math.max(2, parsedLine.raw.length + 1)
-      });
+      document.parseDiagnostics.push(
+        createRuleDiagnostic("AGS3", "2", "ags3.structure.before-group", "error", "Found AGS3 content before a GROUP line.", parsedLine.lineNumber, 1, Math.max(2, parsedLine.raw.length + 1))
+      );
       continue;
     }
 

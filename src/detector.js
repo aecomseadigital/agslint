@@ -1,16 +1,17 @@
 "use strict";
 
-const { parseCsvLine, splitLines } = require("./utils/lineParser");
+const { parseCsvLine, splitLinesDetailed } = require("./utils/lineParser");
 
 function parseNonBlankLines(text) {
   const lines = [];
 
-  for (const [index, rawLine] of splitLines(text).entries()) {
+  for (const sourceLine of splitLinesDetailed(text)) {
+    const rawLine = sourceLine.raw;
     if (!rawLine.trim()) {
       continue;
     }
 
-    lines.push(parseCsvLine(rawLine, index + 1));
+    lines.push(parseCsvLine(rawLine, sourceLine.lineNumber));
   }
 
   return lines;

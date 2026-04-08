@@ -21,16 +21,16 @@ function run(name, fn) {
   }
 }
 
-function getDiagnostic(result, code, predicate = () => true) {
-  return result.diagnostics.find((diagnostic) => diagnostic.code === code && predicate(diagnostic));
+function getDiagnostic(result, predicate = () => true) {
+  return result.diagnostics.find((diagnostic) => predicate(diagnostic));
 }
 
-function applyFirstQuickFix(text, result, code, predicate = () => true) {
-  const diagnostic = getDiagnostic(result, code, predicate);
-  assert.ok(diagnostic, `Expected diagnostic ${code}`);
+function applyFirstQuickFix(text, result, predicate, label) {
+  const diagnostic = getDiagnostic(result, predicate);
+  assert.ok(diagnostic, `Expected diagnostic ${label}`);
 
   const fixes = buildQuickFixes(text, result, diagnostic, { baseDir });
-  assert.ok(fixes.length > 0, `Expected quick fix for ${code}`);
+  assert.ok(fixes.length > 0, `Expected quick fix for ${label}`);
   return applyEdits(text, fixes[0].edits);
 }
 
@@ -59,7 +59,7 @@ run("AGS3 lint detects missing UNITS rows", () => {
 
   const result = lintText(text, { baseDir, version: "3" });
   assert.equal(result.version, "3");
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-UNITS"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.units.missing"));
 });
 
 run("AGS3 duplicate-key check maps ?HOLE_ID to HOLE_ID", () => {
@@ -80,8 +80,8 @@ run("AGS3 duplicate-key check maps ?HOLE_ID to HOLE_ID", () => {
 
   const result = lintText(text, { baseDir, version: "3" });
   assert.equal(result.version, "3");
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-KEY"));
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-KEY-DUP"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.key.missing"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.key.duplicate"));
 });
 
 run("AGS3 heading rules match optional headings with or without question mark", () => {
@@ -105,10 +105,10 @@ run("AGS3 heading rules match optional headings with or without question mark", 
 
   const result = lintText(text, { baseDir, version: "3" });
   assert.equal(result.version, "3");
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-HEADING"));
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-CUSTOM-HEADING"));
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-DICT"));
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-HEADING-STANDARD" && diagnostic.message.includes('"?CNMT_ULIM"')));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.heading.unknown"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.heading.custom-pattern"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.group.dict-missing"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.heading.standard" && diagnostic.message.includes('"?CNMT_ULIM"')));
 });
 
 run("AGS3 multi-line heading row does not add a phantom extra heading", () => {
@@ -129,7 +129,7 @@ run("AGS3 multi-line heading row does not add a phantom extra heading", () => {
   assert.deepEqual(projBlock.headingCodes, ["PROJ_ID", "PROJ_NAME", "PROJ_DATE", "PROJ_AGS"]);
 
   const result = lintText(text, { baseDir, version: "3" });
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-COLUMNS"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.data.columns"));
 });
 
 run("AGS3 parser reparses continued heading rows from joined raw text", () => {
@@ -160,8 +160,8 @@ run("AGS3 suppresses AGS-CSV and AGS-QUOTE on continued heading rows", () => {
   ].join("\n");
 
   const result = lintText(text, { baseDir, version: "3" });
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS-CSV"));
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS-QUOTE"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.csv.unterminated" || diagnostic.checkId === "ags3.csv.delimiter"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.quote.unquoted"));
 });
 
 run("AGS3 invalid split heading emits dedicated continuation errors", () => {
@@ -173,9 +173,9 @@ run("AGS3 invalid split heading emits dedicated continuation errors", () => {
   ].join("\n");
 
   const result = lintText(text, { baseDir, version: "3" });
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-HEADING-CONT"));
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS-CSV"));
-  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "AGS-QUOTE"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS3-RULE-13"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.csv.unterminated" || diagnostic.checkId === "ags3.csv.delimiter"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags3.quote.unquoted"));
 });
 
 run("AGS4 lint detects TYPE mismatches", () => {
@@ -185,11 +185,11 @@ run("AGS4 lint detects TYPE mismatches", () => {
     "\"UNIT\",\"\",\"\"",
     "\"TYPE\",\"X\",\"X\"",
     "\"DATA\",\"121415\",\"AGS Test\""
-  ].join("\n");
+  ].join("\r\n");
 
   const result = lintText(text, { baseDir, version: "4" });
   assert.equal(result.version, "4");
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS4-TYPE"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.type.reference-mismatch"));
 });
 
 run("AGS4 lint detects missing required headings from DICT_STAT", () => {
@@ -199,11 +199,72 @@ run("AGS4 lint detects missing required headings from DICT_STAT", () => {
     "\"UNIT\",\"\"",
     "\"TYPE\",\"X\"",
     "\"DATA\",\"1\""
-  ].join("\n");
+  ].join("\r\n");
 
   const result = lintText(text, { baseDir, version: "4" });
   assert.equal(result.version, "4");
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "AGS4-REQUIRED"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.required.missing-heading"));
+});
+
+run("AGS4 lint detects misplaced duplicate structural rows", () => {
+  const text = [
+    "\"GROUP\",\"PROJ\"",
+    "\"HEADING\",\"PROJ_ID\",\"PROJ_NAME\"",
+    "\"UNIT\",\"\",\"\"",
+    "\"UNIT\",\"\",\"\"",
+    "\"TYPE\",\"ID\",\"X\"",
+    "\"DATA\",\"121415\",\"AGS Test\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir, version: "4" });
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.unit.duplicate-row"));
+});
+
+run("AGS4 lint detects duplicate key combinations", () => {
+  const text = [
+    "\"GROUP\",\"ABBR\"",
+    "\"HEADING\",\"ABBR_HDNG\",\"ABBR_CODE\",\"ABBR_DESC\"",
+    "\"UNIT\",\"\",\"\",\"\"",
+    "\"TYPE\",\"X\",\"X\",\"X\"",
+    "\"DATA\",\"LOCA_TYPE\",\"TP\",\"Trial Pit\"",
+    "\"DATA\",\"LOCA_TYPE\",\"TP\",\"Trial Pit Duplicate\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir, version: "4" });
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.key.duplicate"));
+});
+
+run("AGS4 lint merges in-file DICT definitions for custom groups and headings", () => {
+  const text = [
+    "\"GROUP\",\"DICT\"",
+    "\"HEADING\",\"DICT_TYPE\",\"DICT_GRP\",\"DICT_HDNG\",\"DICT_STAT\",\"DICT_DTYP\",\"DICT_DESC\",\"DICT_UNIT\",\"DICT_PGRP\"",
+    "\"UNIT\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"",
+    "\"TYPE\",\"PA\",\"X\",\"X\",\"PA\",\"PT\",\"X\",\"PU\",\"X\"",
+    "\"DATA\",\"GROUP\",\"NGRP\",\"\",\"\",\"\",\"New Group\",\"\",\"-\"",
+    "\"DATA\",\"HEADING\",\"NGRP\",\"NGRP_VAL\",\"OTHER\",\"X\",\"New Value\",\"\",\"\"",
+    "\"GROUP\",\"NGRP\"",
+    "\"HEADING\",\"NGRP_VAL\"",
+    "\"UNIT\",\"\"",
+    "\"TYPE\",\"X\"",
+    "\"DATA\",\"Hello\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir, version: "4" });
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.group.unknown"));
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.heading.unknown"));
+});
+
+run("AGS4 lint detects FILE_FSET usage without FILE group", () => {
+  const text = [
+    "\"GROUP\",\"PROJ\"",
+    "\"HEADING\",\"PROJ_ID\",\"PROJ_NAME\",\"FILE_FSET\"",
+    "\"UNIT\",\"\",\"\",\"\"",
+    "\"TYPE\",\"ID\",\"X\",\"X\"",
+    "\"DATA\",\"121415\",\"AGS Test\",\"FS1\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir, version: "4" });
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.file.group-missing"));
 });
 
 run("quick fix wraps unquoted values in double quotes", () => {
@@ -212,11 +273,11 @@ run("quick fix wraps unquoted values in double quotes", () => {
     "\"HEADING\",\"PROJ_ID\"",
     "\"TYPE\",\"ID\"",
     "\"DATA\",ABC"
-  ].join("\n");
+  ].join("\r\n");
 
   const result = lintText(text, { baseDir, version: "4" });
-  const fixed = applyFirstQuickFix(text, result, "AGS-QUOTE");
-  assert.equal(fixed.split("\n")[3], "\"DATA\",\"ABC\"");
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.quote.unquoted", "ags4.quote.unquoted");
+  assert.equal(fixed.split("\r\n")[3], "\"DATA\",\"ABC\"");
 });
 
 run("quick fix replaces whitespace-only quoted values with empty quotes", () => {
@@ -225,11 +286,11 @@ run("quick fix replaces whitespace-only quoted values with empty quotes", () => 
     "\"HEADING\",\"PROJ_ID\"",
     "\"TYPE\",\"ID\"",
     "\"DATA\",\"   \""
-  ].join("\n");
+  ].join("\r\n");
 
   const result = lintText(text, { baseDir, version: "4" });
-  const fixed = applyFirstQuickFix(text, result, "AGS-EMPTY");
-  assert.equal(fixed.split("\n")[3], "\"DATA\",\"\"");
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.quote.whitespace", "ags4.quote.whitespace");
+  assert.equal(fixed.split("\r\n")[3], "\"DATA\",\"\"");
 });
 
 run("quick fix replaces a bad AGS3 UNITS first cell", () => {
@@ -242,7 +303,8 @@ run("quick fix replaces a bad AGS3 UNITS first cell", () => {
 
   const result = lintText(text, { baseDir, version: "3" });
   const fixes = buildQuickFixes(text, result, {
-    code: "AGS3-UNITS",
+    code: "AGS3-RULE-18",
+    checkId: "ags3.units.first-cell",
     message: "AGS3 unit rows must start with \"<UNITS>\".",
     line: 3,
     column: 1,
@@ -261,7 +323,7 @@ run("quick fix inserts a missing AGS3 UNITS row from reference units", () => {
   ].join("\n");
 
   const result = lintText(text, { baseDir, version: "3" });
-  const fixed = applyFirstQuickFix(text, result, "AGS3-UNITS", (diagnostic) => diagnostic.message.includes("requires a <UNITS> row"));
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags3.units.missing", "ags3.units.missing");
   assert.deepEqual(fixed.split("\n").slice(0, 3), [
     "\"**GEOL\"",
     "\"*HOLE_ID\",\"*GEOL_TOP\",\"*GEOL_BASE\"",
@@ -279,7 +341,8 @@ run("quick fix replaces a continuation row first cell with <CONT>", () => {
 
   const result = lintText(text, { baseDir, version: "3" });
   const fixes = buildQuickFixes(text, result, {
-    code: "AGS3-CONT",
+    code: "AGS3-RULE-14",
+    checkId: "ags3.cont.first-cell",
     message: "AGS3 data continuation rows must begin with \"<CONT>\".",
     line: 4,
     column: 1,
@@ -310,7 +373,7 @@ run("quick fix replaces AGS3 headings with the canonical standard heading", () =
   ].join("\n");
 
   const result = lintText(text, { baseDir, version: "3" });
-  const fixed = applyFirstQuickFix(text, result, "AGS3-HEADING-STANDARD");
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags3.heading.standard", "ags3.heading.standard");
   assert.ok(fixed.split("\n")[12].includes("\"*?CNMT_ULIM\""));
 });
 
@@ -321,11 +384,11 @@ run("quick fix replaces AGS4 TYPE values with the reference data type", () => {
     "\"UNIT\",\"\",\"\"",
     "\"TYPE\",\"X\",\"X\"",
     "\"DATA\",\"121415\",\"AGS Test\""
-  ].join("\n");
+  ].join("\r\n");
 
   const result = lintText(text, { baseDir, version: "4" });
-  const fixed = applyFirstQuickFix(text, result, "AGS4-TYPE", (diagnostic) => diagnostic.message.includes("does not match"));
-  assert.equal(fixed.split("\n")[3], "\"TYPE\",\"ID\",\"X\"");
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.type.reference-mismatch", "ags4.type.reference-mismatch");
+  assert.equal(fixed.split("\r\n")[3], "\"TYPE\",\"ID\",\"X\"");
 });
 
 run("quick fix inserts a missing AGS4 TYPE row from reference types", () => {
@@ -334,11 +397,11 @@ run("quick fix inserts a missing AGS4 TYPE row from reference types", () => {
     "\"HEADING\",\"PROJ_ID\",\"PROJ_NAME\"",
     "\"UNIT\",\"\",\"\"",
     "\"DATA\",\"121415\",\"AGS Test\""
-  ].join("\n");
+  ].join("\r\n");
 
   const result = lintText(text, { baseDir, version: "4" });
-  const fixed = applyFirstQuickFix(text, result, "AGS4-TYPE", (diagnostic) => diagnostic.message.includes("must contain a TYPE row"));
-  assert.deepEqual(fixed.split("\n").slice(0, 4), [
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.type.missing-row", "ags4.type.missing-row");
+  assert.deepEqual(fixed.split("\r\n").slice(0, 4), [
     "\"GROUP\",\"PROJ\"",
     "\"HEADING\",\"PROJ_ID\",\"PROJ_NAME\"",
     "\"UNIT\",\"\",\"\"",
