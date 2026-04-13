@@ -1,5 +1,11 @@
 # agslint
 
+## 0.1.2
+
+### Patch Changes
+
+- Added bundled AGS4 standard dictionaries for 4.0.3, 4.0.4, 4.1, 4.1.1, and 4.2, selected the matching AGS4 schema from `TRAN_AGS`, and reduced extension startup cost by switching runtime reference loading to generated JSON with cached, debounced linting.
+
 ## 0.1.1
 
 ### Patch Changes
