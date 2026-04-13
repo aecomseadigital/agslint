@@ -6,6 +6,8 @@
 
 dist/**
 generated/**
+!generated/ags3.references.json
+!generated/ags4.references.json
 scripts/**
 src/test/**
 

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const path = require("path");
 const { applyEdits, buildQuickFixes } = require("../codeActions/quickFixes");
-const { loadReferences } = require("../references/extractors");
+const { getAgs4References, loadReferences, resolveAgs4ReferenceEdition } = require("../references/extractors");
 const { lintText } = require("../linter/linter");
 const { detectVersion } = require("../detector");
 const { parseAgs3 } = require("../parser/ags3Parser");
@@ -36,15 +36,45 @@ function applyFirstQuickFix(text, result, predicate, label) {
 
 run("reference extraction reads AGS3 and AGS4 source data", () => {
   const references = loadReferences(baseDir);
+  const rawReferences = loadReferences(baseDir, { preferGenerated: false });
+  const ags403 = getAgs4References(references, "4.0.3");
+  const ags404 = getAgs4References(references, "4.0.4");
+  const ags41 = getAgs4References(references, "4.1");
+  const ags411 = getAgs4References(references, "4.1.1");
+  const ags42 = getAgs4References(references, "4.2");
 
   assert.equal(references.ags3.stats.groups, 52);
   assert.equal(references.ags3.stats.headings, 697);
   assert.equal(references.ags3.stats.optionalGroups, 10);
   assert.equal(references.ags3.stats.optionalHeadings, 168);
-  assert.equal(references.ags4.stats.groups, 171);
-  assert.equal(references.ags4.stats.headings, 3412);
+  assert.equal(references.ags4.latestEdition, "4.2");
+  assert.deepEqual(Object.keys(references.ags4.byEdition), ["4.0.3", "4.0.4", "4.1", "4.1.1", "4.2"]);
+  assert.equal(ags403.stats.groups, 124);
+  assert.equal(ags403.stats.headings, 2093);
+  assert.equal(ags404.stats.groups, 124);
+  assert.equal(ags404.stats.headings, 2101);
+  assert.equal(ags41.stats.groups, 148);
+  assert.equal(ags41.stats.headings, 2898);
+  assert.equal(ags411.stats.groups, 148);
+  assert.equal(ags411.stats.headings, 2895);
+  assert.equal(ags42.stats.groups, 171);
+  assert.equal(ags42.stats.headings, 3412);
+  assert.equal(getAgs4References(rawReferences, "4.2").stats.headings, 3412);
   assert.equal(references.ags3.groups.get("PROJ").description, "Project Information");
-  assert.equal(references.ags4.groups.get("PROJ").description, "Project Information");
+  assert.equal(ags42.groups.get("PROJ").description, "Project Information");
+});
+
+run("AGS4 reference edition aliases resolve deterministically", () => {
+  assert.equal(resolveAgs4ReferenceEdition("4.0"), "4.0.3");
+  assert.equal(resolveAgs4ReferenceEdition("4.0.0"), "4.0.3");
+  assert.equal(resolveAgs4ReferenceEdition("4.0.4"), "4.0.4");
+  assert.equal(resolveAgs4ReferenceEdition("4.1"), "4.1");
+  assert.equal(resolveAgs4ReferenceEdition("4.1.0"), "4.1");
+  assert.equal(resolveAgs4ReferenceEdition("4.1.1"), "4.1.1");
+  assert.equal(resolveAgs4ReferenceEdition("4.2"), "4.2");
+  assert.equal(resolveAgs4ReferenceEdition("4.2.0"), "4.2");
+  assert.equal(resolveAgs4ReferenceEdition(null), "4.2");
+  assert.equal(resolveAgs4ReferenceEdition("4.3"), "4.2");
 });
 
 run("AGS3 lint detects missing UNITS rows", () => {
@@ -267,6 +297,82 @@ run("AGS4 lint detects FILE_FSET usage without FILE group", () => {
   assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.file.group-missing"));
 });
 
+run("AGS4 lint selects the 4.2 dictionary for 4.2-only groups", () => {
+  const text = [
+    "\"GROUP\",\"TRAN\"",
+    "\"HEADING\",\"TRAN_ISNO\",\"TRAN_AGS\",\"TRAN_DLIM\",\"TRAN_RCON\"",
+    "\"UNIT\",\"\",\"\",\"\",\"\"",
+    "\"TYPE\",\"X\",\"X\",\"X\",\"X\"",
+    "\"DATA\",\"1\",\"4.2.0\",\",\",\";\"",
+    "\"GROUP\",\"CPTT\"",
+    "\"HEADING\",\"LOCA_ID\",\"CPTG_TESN\",\"CPTT_REDN\"",
+    "\"UNIT\",\"\",\"\",\"\"",
+    "\"TYPE\",\"ID\",\"X\",\"0DP\"",
+    "\"DATA\",\"LOC1\",\"TEST1\",\"1\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir });
+  assert.equal(result.referenceEdition, "4.2");
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.group.unknown" && diagnostic.message.includes("\"CPTT\"")));
+});
+
+run("AGS4 lint flags 4.2-only groups when a 4.1.1 dictionary is selected", () => {
+  const text = [
+    "\"GROUP\",\"TRAN\"",
+    "\"HEADING\",\"TRAN_ISNO\",\"TRAN_AGS\",\"TRAN_DLIM\",\"TRAN_RCON\"",
+    "\"UNIT\",\"\",\"\",\"\",\"\"",
+    "\"TYPE\",\"X\",\"X\",\"X\",\"X\"",
+    "\"DATA\",\"1\",\"4.1.1\",\",\",\";\"",
+    "\"GROUP\",\"CPTT\"",
+    "\"HEADING\",\"LOCA_ID\",\"CPTG_TESN\",\"CPTT_REDN\"",
+    "\"UNIT\",\"\",\"\",\"\"",
+    "\"TYPE\",\"ID\",\"X\",\"0DP\"",
+    "\"DATA\",\"LOC1\",\"TEST1\",\"1\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir });
+  assert.equal(result.referenceEdition, "4.1.1");
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.group.unknown" && diagnostic.message.includes("\"CPTT\"")));
+});
+
+run("AGS4 lint selects the 4.1 dictionary for 4.1-era groups", () => {
+  const text = [
+    "\"GROUP\",\"TRAN\"",
+    "\"HEADING\",\"TRAN_ISNO\",\"TRAN_AGS\",\"TRAN_DLIM\",\"TRAN_RCON\"",
+    "\"UNIT\",\"\",\"\",\"\",\"\"",
+    "\"TYPE\",\"X\",\"X\",\"X\",\"X\"",
+    "\"DATA\",\"1\",\"4.1\",\",\",\";\"",
+    "\"GROUP\",\"CTRC\"",
+    "\"HEADING\",\"LOCA_ID\",\"SAMP_TOP\",\"SAMP_REF\",\"SAMP_TYPE\",\"SAMP_ID\",\"SPEC_REF\",\"SPEC_DPTH\",\"CTRC_TESN\"",
+    "\"UNIT\",\"\",\"m\",\"\",\"\",\"\",\"\",\"m\",\"\"",
+    "\"TYPE\",\"ID\",\"2DP\",\"X\",\"PA\",\"X\",\"X\",\"2DP\",\"X\"",
+    "\"DATA\",\"LOC1\",\"1.00\",\"REF1\",\"B\",\"S1\",\"SPEC1\",\"1.00\",\"T1\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir });
+  assert.equal(result.referenceEdition, "4.1");
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.group.unknown" && diagnostic.message.includes("\"CTRC\"")));
+});
+
+run("AGS4 lint flags 4.1-era groups when a 4.0.4 dictionary is selected", () => {
+  const text = [
+    "\"GROUP\",\"TRAN\"",
+    "\"HEADING\",\"TRAN_ISNO\",\"TRAN_AGS\",\"TRAN_DLIM\",\"TRAN_RCON\"",
+    "\"UNIT\",\"\",\"\",\"\",\"\"",
+    "\"TYPE\",\"X\",\"X\",\"X\",\"X\"",
+    "\"DATA\",\"1\",\"4.0.4\",\",\",\";\"",
+    "\"GROUP\",\"CTRC\"",
+    "\"HEADING\",\"LOCA_ID\",\"SAMP_TOP\",\"SAMP_REF\",\"SAMP_TYPE\",\"SAMP_ID\",\"SPEC_REF\",\"SPEC_DPTH\",\"CTRC_TESN\"",
+    "\"UNIT\",\"\",\"m\",\"\",\"\",\"\",\"\",\"m\",\"\"",
+    "\"TYPE\",\"ID\",\"2DP\",\"X\",\"PA\",\"X\",\"X\",\"2DP\",\"X\"",
+    "\"DATA\",\"LOC1\",\"1.00\",\"REF1\",\"B\",\"S1\",\"SPEC1\",\"1.00\",\"T1\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir });
+  assert.equal(result.referenceEdition, "4.0.4");
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.group.unknown" && diagnostic.message.includes("\"CTRC\"")));
+});
+
 run("quick fix wraps unquoted values in double quotes", () => {
   const text = [
     "\"GROUP\",\"PROJ\"",
@@ -391,6 +497,26 @@ run("quick fix replaces AGS4 TYPE values with the reference data type", () => {
   assert.equal(fixed.split("\r\n")[3], "\"TYPE\",\"ID\",\"X\"");
 });
 
+run("quick fix uses the resolved AGS4 dictionary edition for TYPE replacements", () => {
+  const text = [
+    "\"GROUP\",\"TRAN\"",
+    "\"HEADING\",\"TRAN_ISNO\",\"TRAN_AGS\",\"TRAN_DLIM\",\"TRAN_RCON\"",
+    "\"UNIT\",\"\",\"\",\"\",\"\"",
+    "\"TYPE\",\"X\",\"X\",\"X\",\"X\"",
+    "\"DATA\",\"1\",\"4.1.1\",\",\",\";\"",
+    "\"GROUP\",\"PMTD\"",
+    "\"HEADING\",\"LOCA_ID\",\"PMTD_AX1\"",
+    "\"UNIT\",\"\",\"mm\"",
+    "\"TYPE\",\"ID\",\"4DP\"",
+    "\"DATA\",\"LOC1\",\"1.2345\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir });
+  assert.equal(result.referenceEdition, "4.1.1");
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.type.reference-mismatch", "ags4.type.reference-mismatch");
+  assert.equal(fixed.split("\r\n")[8], "\"TYPE\",\"ID\",\"3DP\"");
+});
+
 run("quick fix inserts a missing AGS4 TYPE row from reference types", () => {
   const text = [
     "\"GROUP\",\"PROJ\"",
@@ -436,6 +562,30 @@ run("detector reads AGS4 edition from TRAN_AGS", () => {
   assert.equal(detected.version, "4");
   assert.equal(detected.edition, "4.2.0");
   assert.equal(detected.source, "TRAN_AGS");
+});
+
+run("AGS4 lint falls back to the latest bundled dictionary when edition is missing or unsupported", () => {
+  const missingEditionText = [
+    "\"GROUP\",\"PROJ\"",
+    "\"HEADING\",\"PROJ_ID\",\"PROJ_NAME\"",
+    "\"UNIT\",\"\",\"\"",
+    "\"TYPE\",\"ID\",\"X\"",
+    "\"DATA\",\"121415\",\"AGS Test\""
+  ].join("\r\n");
+
+  const missingEditionResult = lintText(missingEditionText, { baseDir, version: "4" });
+  assert.equal(missingEditionResult.referenceEdition, "4.2");
+
+  const unsupportedEditionText = [
+    "\"GROUP\",\"TRAN\"",
+    "\"HEADING\",\"TRAN_ISNO\",\"TRAN_AGS\",\"TRAN_DLIM\",\"TRAN_RCON\"",
+    "\"UNIT\",\"\",\"\",\"\",\"\"",
+    "\"TYPE\",\"X\",\"X\",\"X\",\"X\"",
+    "\"DATA\",\"1\",\"4.3\",\",\",\";\""
+  ].join("\r\n");
+
+  const unsupportedEditionResult = lintText(unsupportedEditionText, { baseDir });
+  assert.equal(unsupportedEditionResult.referenceEdition, "4.2");
 });
 
 if (process.exitCode) {

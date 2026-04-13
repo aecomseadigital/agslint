@@ -14,7 +14,8 @@ const result = lintFile(path.resolve(process.cwd(), filePath), {
   baseDir: path.resolve(__dirname, "..")
 });
 
-console.log(`Detected AGS ${result.version}`);
+const referenceText = result.referenceEdition ? ` using dictionary ${result.referenceEdition}` : "";
+console.log(`Detected AGS ${result.version}${referenceText}`);
 
 if (!result.diagnostics.length) {
   console.log("No diagnostics.");

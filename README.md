@@ -15,8 +15,8 @@ References:
 
 - Registers the `ags` language and `.ags` file extension in VS Code
 - Provides AGS syntax highlighting through the bundled TextMate grammar
-- Detects AGS3 versus AGS4 content
-- Reports diagnostics for structural, schema, and formatting issues
+- Detects AGS3 versus AGS4 content and resolves bundled AGS4 dictionary editions from `TRAN_AGS`
+- Reports diagnostics for structural, schema, and formatting issues against the matching AGS schema edition
 - Provides quick fixes for selected lint findings
 - Adds these command palette commands:
   - `AGSLint: Run Lint on File`
@@ -25,7 +25,7 @@ References:
 ## Repo Layout
 
 - `src/` contains the extension entrypoint, linter, parsers, references, and tests
-- `ref/` contains raw AGS reference files used as source data
+- `ref/` contains raw AGS reference files used as source data, including bundled AGS4 standard dictionaries for 4.0.3, 4.0.4, 4.1, 4.1.1, and 4.2
 - `generated/` contains optional derived JSON outputs produced from the reference data
 - `syntaxes/` contains the TextMate grammar for AGS syntax highlighting
 - `scripts/` contains helper scripts for reference generation and file linting

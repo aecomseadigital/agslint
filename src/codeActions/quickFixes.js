@@ -1,6 +1,6 @@
 "use strict";
 
-const { loadReferences } = require("../references/extractors");
+const { getAgs4References, loadReferences } = require("../references/extractors");
 
 function quoteValue(value) {
   return `"${String(value).replace(/"/g, "\"\"")}"`;
@@ -265,7 +265,8 @@ function buildAgs4TypeMismatchFix(text, lintResult, diagnostic, references) {
   }
 
   const heading = block.headingRow.tokens[tokenIndex] ? block.headingRow.tokens[tokenIndex].value : "";
-  const ref = (references.ags4.headingsByGroup.get(block.groupCode) || new Map()).get(heading);
+  const ags4References = getAgs4References(references, lintResult.referenceEdition);
+  const ref = (ags4References.headingsByGroup.get(block.groupCode) || new Map()).get(heading);
   if (!ref || !ref.dataType) {
     return [];
   }
@@ -284,7 +285,8 @@ function buildAgs4MissingTypeRowFix(text, lintResult, diagnostic, references) {
     return [];
   }
 
-  const headingRefs = references.ags4.headingsByGroup.get(block.groupCode) || new Map();
+  const ags4References = getAgs4References(references, lintResult.referenceEdition);
+  const headingRefs = ags4References.headingsByGroup.get(block.groupCode) || new Map();
   const values = ["TYPE"];
 
   for (const headingToken of block.headingRow.tokens.slice(1)) {

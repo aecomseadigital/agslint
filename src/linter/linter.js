@@ -6,7 +6,12 @@ const { detectVersion } = require("../detector");
 const { parseAgs3 } = require("../parser/ags3Parser");
 const { parseAgs4 } = require("../parser/ags4Parser");
 const { AGS3_RULES } = require("../references/ags3Rules");
-const { loadReferences, normalizeAgs3HeadingToken } = require("../references/extractors");
+const {
+  getAgs4References,
+  loadReferences,
+  normalizeAgs3HeadingToken,
+  resolveAgs4ReferenceEdition
+} = require("../references/extractors");
 const { countNonAscii } = require("../utils/lineParser");
 const { convertGenericCsvDiagnostic, createRuleDiagnostic } = require("./diagnostics");
 
@@ -90,7 +95,13 @@ function normalizeParseDiagnostics(parseDiagnostics, version) {
 function lintText(text, options = {}) {
   const baseDir = options.baseDir || process.cwd();
   const references = options.references || loadReferences(baseDir);
-  const detected = options.version ? { version: options.version, reason: "Forced by options." } : detectVersion(text);
+  const detected = options.version
+    ? { version: options.version, edition: options.edition || null, reason: "Forced by options." }
+    : detectVersion(text);
+  const referenceEdition = detected.version === "4" ? resolveAgs4ReferenceEdition(detected.edition) : null;
+  const reason = detected.version === "4"
+    ? `${detected.reason} Using AGS4 ${referenceEdition} standard dictionary.`
+    : detected.reason;
   const document = detected.version === "3" ? parseAgs3(text) : parseAgs4(text);
   const suppressedCheckIdsByLine = detected.version === "3"
     ? getAgs3SuppressedChecksByLine(document)
@@ -104,12 +115,14 @@ function lintText(text, options = {}) {
   if (detected.version === "3") {
     lintAgs3(document, diagnostics, references);
   } else {
-    lintAgs4(document, diagnostics, references);
+    lintAgs4(document, diagnostics, references, referenceEdition);
   }
 
   return {
     version: detected.version,
-    reason: detected.reason,
+    edition: detected.edition || null,
+    referenceEdition,
+    reason,
     diagnostics,
     document
   };
@@ -538,8 +551,8 @@ function getAgs4RowValue(table, row, field) {
   return row.tokens[index + 1] ? row.tokens[index + 1].value : "";
 }
 
-function buildMergedAgs4References(references, tablesByGroup) {
-  const merged = cloneAgs4References(references.ags4);
+function buildMergedAgs4References(baseAgs4References, tablesByGroup) {
+  const merged = cloneAgs4References(baseAgs4References);
   const dictTable = tablesByGroup.get("DICT");
 
   if (!dictTable || !dictTable.headingRow) {
@@ -728,9 +741,9 @@ function validateAgs4DataType(dataType, value, unit) {
   return { valid: true };
 }
 
-function lintAgs4(document, diagnostics, references) {
+function lintAgs4(document, diagnostics, references, referenceEdition) {
   const tablesByGroup = new Map(document.blocks.map((block) => [block.groupCode, decorateAgs4Block(block)]));
-  const mergedRefs = buildMergedAgs4References(references, tablesByGroup);
+  const mergedRefs = buildMergedAgs4References(getAgs4References(references, referenceEdition), tablesByGroup);
   const rule9Hits = [];
 
   for (const table of tablesByGroup.values()) {
