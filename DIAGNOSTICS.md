@@ -54,7 +54,7 @@ Implemented AGS4 rule coverage currently includes:
 
 ## Notes
 
-- AGS4 validation remains fixed to the bundled AGS4.2 dictionary.
+- AGS4 validation uses the bundled dictionary that matches `TRAN_AGS`, with fallback to bundled AGS4.2 when the edition is missing or unsupported.
 - In-file AGS4 `DICT` definitions are merged into the bundled dictionary at lint time.
 - AGS4 Rule 20 is editor-only here: the linter does not inspect sibling folders or physical files on disk.
 

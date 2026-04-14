@@ -4,7 +4,7 @@ AGSLint is the world's first open-sourced VS Code extension for linting and vali
 
 ## Tribute
 
-This project is built with clear respect for the AGS Python Library maintained by the AGS Data Format Working Group. Their work on reading, writing, and checking AGS files, together with the surrounding documentation and standards guidance, has materially improved the AGS tooling ecosystem and helped establish a stronger foundation for projects like this one.
+This project is built with clear respect for the <a href='https://gitlab.com/ags-data-format-wg/ags-python-library'>AGS Python Library</a> maintained by the <a href='https://www.ags.org.uk/group/data-management/'>AGS Data Format Working Group</a>. Their work on reading, writing, and checking AGS files, together with the surrounding documentation and standards guidance, has materially improved the AGS tooling ecosystem and helped establish a stronger foundation for projects like this one.
 
 References:
 
