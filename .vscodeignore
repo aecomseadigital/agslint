@@ -12,6 +12,7 @@ scripts/**
 src/test/**
 
 DIAGNOSTICS.md
+AGENTS.md
 PLANS.md
 RELEASING.md
 package-lock.json
