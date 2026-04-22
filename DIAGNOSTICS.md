@@ -19,7 +19,9 @@ Implemented AGS3 rule coverage currently includes:
 - `AGS3-RULE-9`: invalid tab delimiters and suppressed low-level CSV delimiter issues
 - `AGS3-RULE-12`: line length
 - `AGS3-RULE-13`: malformed heading continuations
+  Suggested fix: keep whole quoted heading tokens on the first physical line until adding the next token would exceed 240 characters, end that physical line with a comma, and continue on the next line with the next whole quoted heading token.
 - `AGS3-RULE-14`: malformed `<CONT>` continuation rows
+  Suggested fix: fill the base data row as far as possible without exceeding 240 characters after padding null cells to the full heading count, then continue on the next line with `"<CONT>"` plus the required null cells so the split value resumes in the correct field order.
 - `AGS3-RULE-15`: whitespace-only quoted nulls
 - `AGS3-RULE-17`: more than 60 headings
 - `AGS3-RULE-18`, `18A`, `18B`: missing/malformed `<UNITS>`, malformed units continuations, and missing `UNIT`

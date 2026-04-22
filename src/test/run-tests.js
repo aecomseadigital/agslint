@@ -219,7 +219,20 @@ run("AGS4 lint detects TYPE mismatches", () => {
 
   const result = lintText(text, { baseDir, version: "4" });
   assert.equal(result.version, "4");
-  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.type.reference-mismatch"));
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.type.reference-mismatch" && diagnostic.severity === "warning"));
+});
+
+run("AGS4 lint reports data type validation as warnings", () => {
+  const text = [
+    "\"GROUP\",\"PROJ\"",
+    "\"HEADING\",\"PROJ_ID\"",
+    "\"UNIT\",\"\"",
+    "\"TYPE\",\"2DP\"",
+    "\"DATA\",\"1.2\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir, version: "4" });
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.checkId === "ags4.type.value-invalid" && diagnostic.severity === "warning"));
 });
 
 run("AGS4 lint detects missing required headings from DICT_STAT", () => {
@@ -437,6 +450,23 @@ run("quick fix inserts a missing AGS3 UNITS row from reference units", () => {
   ]);
 });
 
+run("quick fix replaces an empty AGS3 unit with the reference unit", () => {
+  const text = [
+    "\"**SAMP\"",
+    "\"*HOLE_ID\",\"*SAMP_TOP\",\"*SAMP_DIA\",\"*SAMP_BASE\"",
+    "\"<UNITS>\",\"m\",\"\",\"m\"",
+    "\"BH1\",\"1\",\"75\",\"2\""
+  ].join("\n");
+
+  const result = lintText(text, { baseDir, version: "3" });
+  const diagnostic = getDiagnostic(result, (entry) => entry.checkId === "ags3.units.reference");
+  assert.ok(diagnostic);
+  assert.match(diagnostic.message, /Suggested fix: replace the empty unit with the AGS3 reference unit "mm"\./);
+
+  const fixed = applyFirstQuickFix(text, result, (entry) => entry.checkId === "ags3.units.reference", "ags3.units.reference");
+  assert.equal(fixed.split("\n")[2], "\"<UNITS>\",\"m\",\"mm\",\"m\"");
+});
+
 run("quick fix replaces a continuation row first cell with <CONT>", () => {
   const text = [
     "\"**GEOL\"",
@@ -515,6 +545,34 @@ run("quick fix uses the resolved AGS4 dictionary edition for TYPE replacements",
   assert.equal(result.referenceEdition, "4.1.1");
   const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.type.reference-mismatch", "ags4.type.reference-mismatch");
   assert.equal(fixed.split("\r\n")[8], "\"TYPE\",\"ID\",\"3DP\"");
+});
+
+run("quick fix normalizes AGS4 nDP values to the expected decimal precision", () => {
+  const text = [
+    "\"GROUP\",\"PROJ\"",
+    "\"HEADING\",\"PROJ_ID\"",
+    "\"UNIT\",\"\"",
+    "\"TYPE\",\"2DP\"",
+    "\"DATA\",\"1.2\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir, version: "4" });
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.type.value-invalid", "ags4.type.value-invalid");
+  assert.equal(fixed.split("\r\n")[4], "\"DATA\",\"1.20\"");
+});
+
+run("quick fix normalizes AGS4 nSF values to the expected significant figures", () => {
+  const text = [
+    "\"GROUP\",\"PROJ\"",
+    "\"HEADING\",\"PROJ_ID\"",
+    "\"UNIT\",\"\"",
+    "\"TYPE\",\"2SF\"",
+    "\"DATA\",\"1.234\""
+  ].join("\r\n");
+
+  const result = lintText(text, { baseDir, version: "4" });
+  const fixed = applyFirstQuickFix(text, result, (diagnostic) => diagnostic.checkId === "ags4.type.value-invalid", "ags4.type.value-invalid");
+  assert.equal(fixed.split("\r\n")[4], "\"DATA\",\"1.2\"");
 });
 
 run("quick fix inserts a missing AGS4 TYPE row from reference types", () => {

@@ -204,6 +204,33 @@ function buildAgs3MissingUnitsFix(text, lintResult, diagnostic, references) {
   ];
 }
 
+function buildAgs3UnitsReferenceFix(text, lintResult, diagnostic, references) {
+  const block = lintResult.document.blocks.find((entry) => entry.unitsRow && entry.unitsRow.startLine === diagnostic.line);
+  if (!block || !block.unitsRow) {
+    return [];
+  }
+
+  const tokenIndex = findTokenIndexByRange(block.unitsRow.cells, diagnostic);
+  if (tokenIndex <= 0) {
+    return [];
+  }
+
+  const headingRefs = references.ags3.headingsByGroup.get(block.groupCode);
+  const headingCode = block.headingCodes[tokenIndex];
+  const ref = getAgs3HeadingReference(headingRefs, headingCode);
+  if (!ref) {
+    return [];
+  }
+
+  const replacement = ref.unit || "";
+  return [
+    createQuickFix(
+      `Replace with reference unit ${replacement || '""'}`,
+      [createTokenReplaceEdit(text, diagnostic.line, block.unitsRow.cells[tokenIndex], quoteValue(replacement))]
+    )
+  ];
+}
+
 function buildAgs3ContFix(text, lintResult, diagnostic) {
   const line = findLine(lintResult.document.lines, diagnostic.line);
   if (!line) {
@@ -303,6 +330,32 @@ function buildAgs4MissingTypeRowFix(text, lintResult, diagnostic, references) {
   ];
 }
 
+function buildAgs4DataTypeValueFix(text, lintResult, diagnostic) {
+  const line = findLine(lintResult.document.lines, diagnostic.line);
+  if (!line) {
+    return [];
+  }
+
+  const tokenIndex = findTokenIndexByRange(line.tokens, diagnostic);
+  if (tokenIndex === -1) {
+    return [];
+  }
+
+  const expectedMatch = diagnostic.message.match(/\(Expected: ([^)]+)\)/);
+  const dataTypeMatch = diagnostic.message.match(/data type (\d+(?:DP|SF))\./);
+  if (!expectedMatch || !dataTypeMatch) {
+    return [];
+  }
+
+  const expectedValue = expectedMatch[1];
+  return [
+    createQuickFix(
+      `Replace with ${expectedValue}`,
+      [createTokenReplaceEdit(text, diagnostic.line, line.tokens[tokenIndex], quoteValue(expectedValue))]
+    )
+  ];
+}
+
 function buildQuickFixes(text, lintResult, diagnostic, options = {}) {
   const references = loadReferences(options.baseDir || process.cwd());
 
@@ -322,6 +375,10 @@ function buildQuickFixes(text, lintResult, diagnostic, options = {}) {
     return buildAgs3MissingUnitsFix(text, lintResult, diagnostic, references);
   }
 
+  if (hasCheckId(diagnostic, "ags3.units.reference")) {
+    return buildAgs3UnitsReferenceFix(text, lintResult, diagnostic, references);
+  }
+
   if (hasCheckId(diagnostic, "ags3.cont.first-cell")) {
     return buildAgs3ContFix(text, lintResult, diagnostic);
   }
@@ -336,6 +393,10 @@ function buildQuickFixes(text, lintResult, diagnostic, options = {}) {
 
   if (hasCheckId(diagnostic, "ags4.type.missing-row")) {
     return buildAgs4MissingTypeRowFix(text, lintResult, diagnostic, references);
+  }
+
+  if (hasCheckId(diagnostic, "ags4.type.value-invalid")) {
+    return buildAgs4DataTypeValueFix(text, lintResult, diagnostic);
   }
 
   return [];

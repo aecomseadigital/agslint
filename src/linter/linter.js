@@ -245,7 +245,7 @@ function lintAgs3LogicalRowContinuationShape(diagnostics, logicalRow, ruleId, ch
           ruleId,
           `${checkId}.comma`,
           "error",
-          `AGS3 ${label} continuation must split between complete ${label === "HEADING" ? "headings" : "units"} and end the continued line with a comma.`,
+          `AGS3 ${label} continuation must split between complete ${label === "HEADING" ? "headings" : "units"} and end the continued line with a comma. Suggested fix: keep whole quoted ${label === "HEADING" ? "heading" : "unit"} tokens on the first physical line until adding the next token would exceed 240 characters, then continue on the next line with that next quoted token.`,
           currentLine.lineNumber,
           1,
           currentLine.raw.length + 1
@@ -259,7 +259,7 @@ function lintAgs3LogicalRowContinuationShape(diagnostics, logicalRow, ruleId, ch
           ruleId,
           `${checkId}.quote`,
           "error",
-          `AGS3 ${label} continuation lines must begin with a quoted ${label === "HEADING" ? "heading" : "unit"} value.`,
+          `AGS3 ${label} continuation lines must begin with a quoted ${label === "HEADING" ? "heading" : "unit"} value. Suggested fix: start the continued line with the next whole quoted ${label === "HEADING" ? "heading" : "unit"} token and do not use <CONT> for ${label === "HEADING" ? "heading" : "unit"} continuation.`,
           nextLine.lineNumber,
           1,
           Math.max(2, nextLine.raw.length + 1)
@@ -392,7 +392,10 @@ function lintAgs3(document, diagnostics, references) {
         const headingCode = block.headingCodes[index];
         const expectedHeading = getAgs3HeadingReference(headingRefs, headingCode);
         if (expectedHeading && expectedHeading.unit !== cell.value) {
-          diagnostics.push(createAgs3Diagnostic("18", "ags3.units.reference", "warning", `Unit "${cell.value}" does not match the AGS3 reference unit "${expectedHeading.unit}" for "${headingCode}".`, block.unitsRow.startLine, cell.start, cell.end + 1));
+          const suggestedFix = cell.value === ""
+            ? ` Suggested fix: replace the empty unit with the AGS3 reference unit "${expectedHeading.unit}".`
+            : ` Suggested fix: replace with the AGS3 reference unit "${expectedHeading.unit}".`;
+          diagnostics.push(createAgs3Diagnostic("18", "ags3.units.reference", "warning", `Unit "${cell.value}" does not match the AGS3 reference unit "${expectedHeading.unit}" for "${headingCode}".${suggestedFix}`, block.unitsRow.startLine, cell.start, cell.end + 1));
         }
       }
     }
@@ -414,7 +417,7 @@ function lintAgs3(document, diagnostics, references) {
 
       if (dataRow.kind === "continuation") {
         if (!dataRow.cells[0] || dataRow.cells[0].value !== "<CONT>") {
-          diagnostics.push(createAgs3Diagnostic("14", "ags3.cont.first-cell", "error", 'AGS3 data continuation rows must begin with "<CONT>".', dataRow.lineNumber, 1, Math.max(2, dataRow.raw.length + 1)));
+          diagnostics.push(createAgs3Diagnostic("14", "ags3.cont.first-cell", "error", 'AGS3 data continuation rows must begin with "<CONT>". Suggested fix: fill the base data row as far as possible without exceeding 240 characters after padding null cells to the full heading count, then continue with "<CONT>" followed by the required null cells so the split value resumes in the correct field.', dataRow.lineNumber, 1, Math.max(2, dataRow.raw.length + 1)));
         }
         continue;
       }
@@ -618,6 +621,15 @@ function validateDpValue(value, scale) {
   return new RegExp(`^-?\\d+\\.\\d{${scale}}$`).test(value);
 }
 
+function canonicalDpValue(value, scale) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  return numeric.toFixed(scale);
+}
+
 function validateScientificValue(value, scale) {
   if (value === "") {
     return true;
@@ -700,7 +712,8 @@ function validateAgs4DataType(dataType, value, unit) {
 
   if (/^\d+DP$/.test(dataType)) {
     const scale = Number(dataType.slice(0, -2));
-    return { valid: validateDpValue(value, scale) };
+    const valid = validateDpValue(value, scale);
+    return { valid, expected: valid ? undefined : canonicalDpValue(value, scale) };
   }
 
   if (/^\d+SCI$/.test(dataType)) {
@@ -948,7 +961,7 @@ function lintAgs4TypeAndUnitRows(table, mergedRefs, diagnostics) {
     const actualType = table.typeRow.tokens[index + 1] ? table.typeRow.tokens[index + 1].value : "";
     if (ref.dataType && actualType !== ref.dataType) {
       const token = table.typeRow.tokens[index + 1];
-      diagnostics.push(createAgs4Diagnostic("8", "ags4.type.reference-mismatch", "error", `TYPE "${actualType}" does not match AGS4 reference type "${ref.dataType}" for "${heading}".`, table.typeRow.lineNumber, token ? token.start : 1, token ? token.end + 1 : 2));
+      diagnostics.push(createAgs4Diagnostic("8", "ags4.type.reference-mismatch", "warning", `TYPE "${actualType}" does not match AGS4 reference type "${ref.dataType}" for "${heading}".`, table.typeRow.lineNumber, token ? token.start : 1, token ? token.end + 1 : 2));
     }
 
     if (table.unitRow) {
@@ -984,7 +997,7 @@ function lintAgs4DataTypeRules(table, diagnostics) {
         }
         if (seen.has(value)) {
           const token = row.tokens[index + 1];
-          diagnostics.push(createAgs4Diagnostic("8", "ags4.type.id-duplicate", "error", `Value ${value} in ${heading} is not unique.`, row.lineNumber, token.start, token.end + 1));
+          diagnostics.push(createAgs4Diagnostic("8", "ags4.type.id-duplicate", "warning", `Value ${value} in ${heading} is not unique.`, row.lineNumber, token.start, token.end + 1));
         } else {
           seen.set(value, row.lineNumber);
         }
@@ -1001,7 +1014,7 @@ function lintAgs4DataTypeRules(table, diagnostics) {
       }
 
       const expectedSuffix = validation.expected ? ` (Expected: ${validation.expected})` : "";
-      diagnostics.push(createAgs4Diagnostic("8", "ags4.type.value-invalid", "error", `Value ${value} in ${heading} not of data type ${dataType}.${expectedSuffix}`, row.lineNumber, valueToken ? valueToken.start : 1, valueToken ? valueToken.end + 1 : 2));
+      diagnostics.push(createAgs4Diagnostic("8", "ags4.type.value-invalid", "warning", `Value ${value} in ${heading} not of data type ${dataType}.${expectedSuffix}`, row.lineNumber, valueToken ? valueToken.start : 1, valueToken ? valueToken.end + 1 : 2));
     }
   }
 }
