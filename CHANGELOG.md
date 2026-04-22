@@ -1,5 +1,11 @@
 # agslint
 
+## 0.1.3
+
+### Patch Changes
+
+- Adjust AGS4 Rule 8 severity and quick fixes, and add AGS3 continuation and unit guidance to the diagnostics documentation.
+
 ## 0.1.2
 
 ### Patch Changes
