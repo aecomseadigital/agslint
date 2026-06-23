@@ -69,25 +69,25 @@ function updateVersions(nextVersion) {
 }
 
 function ensureChangelogEntry(nextVersion, currentVersion) {
-  const changelog = fs.readFileSync(changelogPath, "utf8");
-  const heading = `## ${nextVersion}`;
-  if (changelog.includes(heading)) {
+  const changelog = fs.readFileSync(changelogPath, "utf8").replace(/^\uFEFF/, "");
+  const normalized = changelog.replace(/\r\n/g, "\n");
+  const headingPattern = new RegExp(`^##\\s+${nextVersion.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\s*$`, "m");
+  if (headingPattern.test(normalized)) {
     return;
   }
 
-  const lines = [
-    "# AGSLint",
-    "",
-    heading,
+  const title = "# AGSLint";
+  const entry = [
+    `## ${nextVersion}`,
     "",
     "### Release Notes",
     "",
-    `- Local release build bumped from \`${currentVersion}\` to \`${nextVersion}\`. Update this entry before publishing externally if needed.`,
-    ""
-  ];
+    `- Local release build bumped from \`${currentVersion}\` to \`${nextVersion}\`. Update this entry before publishing externally if needed.`
+  ].join("\n");
 
-  const withoutTitle = changelog.replace(/^#\s+AGSLint\s*\r?\n\r?\n?/, "");
-  fs.writeFileSync(changelogPath, `${lines.join("\n")}${withoutTitle}`, "utf8");
+  const body = normalized.replace(/^#\s+agslint\s*\n+/im, "").trimStart();
+  const next = `${title}\n\n${entry}\n\n${body}\n`;
+  fs.writeFileSync(changelogPath, next, "utf8");
 }
 
 function run(command, args) {

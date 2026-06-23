@@ -1,4 +1,10 @@
-# agslint
+# AGSLint
+
+## 0.1.4
+
+### Release Notes
+
+- Local release build bumped from `0.1.3` to `0.1.4`. Update this entry before publishing externally if needed.
 
 ## 0.1.3
 
