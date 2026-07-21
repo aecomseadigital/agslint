@@ -82,6 +82,6 @@
   "devDependencies": {
     "@changesets/changelog-git": "^0.2.1",
     "@changesets/cli": "^2.29.7",
-    "@vscode/vsce": "^3.6.2"
+    "@vscode/vsce": "^3.9.2"
   }
 }
