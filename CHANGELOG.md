@@ -1,5 +1,15 @@
 # AGSLint
 
+## 0.2.1
+
+### Patch Changes
+
+- Exclude `.pytest_cache/` from the packaged VSIX.
+
+  The directory is untracked and self-ignoring in git, so it never showed up in a
+  diff, but `.vscodeignore` did not list it and `vsce` packaged its four files into
+  every build.
+
 ## 0.2.0
 
 ### Minor Changes
