@@ -14,6 +14,7 @@ const {
 } = require("../references/extractors");
 const { countNonAscii } = require("../utils/lineParser");
 const { convertGenericCsvDiagnostic, createRuleDiagnostic } = require("./diagnostics");
+const { lintAgs3CoreRem } = require("./coreRemChecks");
 
 function canonicalAgs3Heading(name) {
   return name && name.startsWith("?") ? name.slice(1) : name;
@@ -425,6 +426,10 @@ function lintAgs3(document, diagnostics, references) {
       rowsByGroup.get(groupCode).push({
         lineNumber: dataRow.lineNumber,
         values: dataRow.cells.map((cell) => cell.value),
+        // Kept so data checks can point a squiggle at the offending cell
+        // rather than the whole row.
+        cells: dataRow.cells,
+        raw: dataRow.raw,
         headingIndex
       });
     }
@@ -454,6 +459,7 @@ function lintAgs3(document, diagnostics, references) {
 
   lintAgs3KeyUniqueness(diagnostics, references, rowsByGroup);
   lintAgs3ParentReferences(diagnostics, references, rowsByGroup);
+  lintAgs3CoreRem(diagnostics, rowsByGroup, getRowFieldValue);
 }
 
 function lintAgs3KeyUniqueness(diagnostics, references, rowsByGroup) {

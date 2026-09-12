@@ -646,6 +646,109 @@ run("AGS4 lint falls back to the latest bundled dictionary when edition is missi
   assert.equal(unsupportedEditionResult.referenceEdition, "4.2");
 });
 
+function coreAgs3(dataRows) {
+  return [
+    '"**PROJ"',
+    '"*PROJ_ID","*PROJ_NAME","*PROJ_DATE","*PROJ_AGS"',
+    '"<UNITS>","","dd/mm/yyyy",""',
+    '"P1","Data checks","08/04/2026","3.1"',
+    '"**CORE"',
+    '"*HOLE_ID","*CORE_TOP","*CORE_BOT","*CORE_PREC","*CORE_SREC","*CORE_REM"',
+    '"<UNITS>","m","m","%","%",""',
+    ...dataRows,
+    ""
+  ].join("\n");
+}
+
+function dataDiagnostics(text) {
+  return lintText(text, { baseDir }).diagnostics.filter((diagnostic) =>
+    String(diagnostic.code).startsWith("AGS3-DATA"));
+}
+
+run("CORE_REM data checks stay silent when the remark agrees with the run", () => {
+  // 1m run at 80% recovery -> 0.20m of void, and the remark says exactly that.
+  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss=10.80-11.00m bgl"']));
+  assert.deepEqual(found, []);
+});
+
+run("AGS3-DATA-1 flags a CORE_REM range outside its own core run", () => {
+  const found = dataDiagnostics(coreAgs3(['"BH1","40.50","41.50","100","100","Core loss=39.50-39.60m bgl"']));
+  const outside = found.find((diagnostic) => diagnostic.checkId === "ags3.core.rem.outside-run");
+  assert.ok(outside, "expected an outside-run diagnostic");
+  assert.equal(outside.code, "AGS3-DATA-1");
+  assert.equal(outside.line, 8);
+  assert.match(outside.message, /lies outside its core run 40\.50-41\.50/);
+});
+
+run("AGS3-DATA-2 flags more void than the recovery allows, and less separately", () => {
+  const over = dataDiagnostics(coreAgs3(['"BH1","60.50","61.50","85","50","Core loss=60.50-65.65m bgl"']))
+    .find((diagnostic) => diagnostic.checkId === "ags3.core.rem.void-exceeds-recovery");
+  assert.ok(over, "expected a void-exceeds-recovery diagnostic");
+  assert.equal(over.code, "AGS3-DATA-2");
+  assert.equal(over.severity, "warning");
+  assert.match(over.message, /5\.15m of void, more than the 0\.15m/);
+
+  // A short remark is legitimate -- CORE_REM need not enumerate every loss in a
+  // run -- so it is reported at a lower severity than the impossible case.
+  const under = dataDiagnostics(coreAgs3(['"BH1","24.20","25.20","65","60","Core loss=24.20-24.35m bgl"']))
+    .find((diagnostic) => diagnostic.checkId === "ags3.core.rem.void-below-recovery");
+  assert.ok(under, "expected a void-below-recovery diagnostic");
+  assert.equal(under.severity, "information");
+});
+
+run("AGS3-DATA-3 surfaces transposed CORE_REM depths", () => {
+  const found = dataDiagnostics(coreAgs3(['"BH1","65.00","66.00","40","30","Core loss=66.55-64.70m bgl"']))
+    .find((diagnostic) => diagnostic.checkId === "ags3.core.rem.depths-transposed");
+  assert.ok(found, "expected a depths-transposed diagnostic");
+  assert.equal(found.code, "AGS3-DATA-3");
+  assert.match(found.message, /written high-low \(66\.55-64\.70\); read as 64\.70-66\.55/);
+});
+
+run("AGS3-DATA-4 reports a marker with no readable range", () => {
+  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss noted"']));
+  assert.equal(found.length, 1);
+  assert.equal(found[0].code, "AGS3-DATA-4");
+  assert.equal(found[0].checkId, "ags3.core.rem.range-unreadable");
+});
+
+run("CORE_REM checks ignore joint dip angles written as bare integer pairs", () => {
+  // "J1 0-30 J2 30-60" are degrees. Reading them as depths would claim 90m of
+  // void on a 1m run. CORE_PREC=38% implies 0.62m, which the real range matches.
+  const found = dataDiagnostics(coreAgs3([
+    '"BH1","42.55","43.55","38","30","(Coreloss at 42.93-43.55m), Highly fractured J1 0-30 J2 30-60 J3 60-90"'
+  ]));
+  assert.deepEqual(found, []);
+});
+
+run("wash boring is exempt from the CORE_REM recovery arithmetic", () => {
+  // A washbored interval is not cored, so CORE_PREC says nothing about it.
+  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","100","100","Wash boring 10.20-10.60m"']));
+  assert.deepEqual(found, []);
+
+  const outside = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","100","100","Wash boring 20.20-20.60m"']))
+    .find((diagnostic) => diagnostic.checkId === "ags3.core.rem.outside-run");
+  assert.ok(outside, "wash boring still gets the containment check");
+});
+
+run("a cavity consumes recovery the same way core loss does", () => {
+  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","100","100","Cavity 10.20-10.60m"']))
+    .find((diagnostic) => diagnostic.checkId === "ags3.core.rem.void-exceeds-recovery");
+  assert.ok(found, "expected the cavity to count towards the void");
+});
+
+run("the recovery cross-check is skipped when CORE_SREC exceeds CORE_PREC", () => {
+  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","40","90","Core loss=10.20-11.00m bgl"']));
+  assert.ok(found.some((diagnostic) => diagnostic.checkId === "ags3.core.rem.recovery-columns-transposed"));
+  assert.ok(!found.some((diagnostic) => diagnostic.checkId === "ags3.core.rem.void-exceeds-recovery"));
+});
+
+run("CORE_REM diagnostics point at the CORE_REM cell", () => {
+  const row = '"BH1","60.50","61.50","85","50","Core loss=60.50-65.65m bgl"';
+  const found = dataDiagnostics(coreAgs3([row]))[0];
+  assert.ok(found);
+  assert.equal(row.slice(found.column - 1, found.endColumn - 1), '"Core loss=60.50-65.65m bgl"');
+});
+
 if (process.exitCode) {
   process.exit(process.exitCode);
 }

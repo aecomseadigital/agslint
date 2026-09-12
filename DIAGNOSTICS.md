@@ -5,6 +5,11 @@ Public diagnostics now use rule-number codes:
 - `AGS3-RULE-<rule>`
 - `AGS4-RULE-<rule>`
 
+Data-consistency checks, which have no AGS rule number because the standard does
+not constrain the values they look at, use a separate code space:
+
+- `AGS3-DATA-<check>`
+
 The linter also attaches an internal `checkId` used by quick fixes and tests.
 
 ## AGS3
@@ -31,6 +36,26 @@ Implemented AGS3 rule coverage currently includes:
 - `AGS3-RULE-22`: invalid custom group names
 - `AGS3-RULE-23`: invalid custom heading names
 - `AGS3-RULE-25`: missing `CODE` when `CNMT` or `?ICCT` is present
+
+## AGS3 data consistency
+
+Engineering checks on values rather than file structure. They report what is
+inconsistent within the data; they never rewrite it.
+
+- `AGS3-DATA-1`: a `CORE_REM` coreloss / cavity / wash boring range lies outside the core run it is recorded against
+- `AGS3-DATA-2`: the void a `CORE_REM` describes disagrees with `CORE_PREC`
+  - `warning` when the remark records more void than the recovery allows, which is impossible
+  - `information` when it records less, which is only suspicious: a remark need not enumerate every loss in a run
+  - skipped, with a diagnostic, when `CORE_PREC` is not a percentage or `CORE_SREC` exceeds it (the two columns are transposed)
+- `AGS3-DATA-3`: a `CORE_REM` depth pair is written high-low, for example `Core loss=66.55-64.70m bgl`
+- `AGS3-DATA-4`: a `CORE_REM` marker is present but no depth range can be read from it
+
+Notes:
+
+- Depth pairs written as bare integers with no unit are ignored. Descriptions list joint dip angles that way (`J1 0-30 J2 30-60 J3 60-90`), and reading those as depths would claim tens of metres of void on a one-metre run.
+- Scanning forward from a marker stops at the next marker, a sentence end, or a closing parenthesis, so a range after `cavity` is never attributed to a preceding `core loss`.
+- Wash boring is exempt from `AGS3-DATA-2`: a washbored interval is not cored, so `CORE_PREC` says nothing about it. It still gets `AGS3-DATA-1`, `-3` and `-4`.
+- Depths are read as written, only put the right way round. A range that merely looks wrong cannot be told apart from a correct one attached to the neighbouring row, so narrowing it would discard real records — which is why these are reported rather than corrected.
 
 ## AGS4
 
