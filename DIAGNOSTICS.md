@@ -40,7 +40,8 @@ Implemented AGS3 rule coverage currently includes:
 ## AGS3 data consistency
 
 Engineering checks on values rather than file structure. They report what is
-inconsistent within the data; they never rewrite it.
+inconsistent within the data -- and, for `AGS3-DATA-5`, what was read out of
+it. They never rewrite it.
 
 - `AGS3-DATA-1`: a `CORE_REM` coreloss / cavity / wash boring range lies outside the core run it is recorded against
 - `AGS3-DATA-2`: the void a `CORE_REM` describes disagrees with `CORE_PREC`
@@ -49,6 +50,10 @@ inconsistent within the data; they never rewrite it.
   - skipped, with a diagnostic, when `CORE_PREC` is not a percentage or `CORE_SREC` exceeds it (the two columns are transposed)
 - `AGS3-DATA-3`: a `CORE_REM` depth pair is written high-low, for example `Core loss=66.55-64.70m bgl`
 - `AGS3-DATA-4`: a `CORE_REM` marker is present but no depth range can be read from it
+- `AGS3-DATA-5`: the coreloss / cavity / wash boring intervals read from a `CORE_REM` remark, reported at `information` whether or not anything is wrong with them
+  - one message per marker per row, listing every range read and their total, for example `CORE_REM records core loss at 10.80-11.00m (0.20m).`
+  - the depths shown are the ones the other four checks act on, so a reviewer can confirm the reading without re-deriving it from the raw remark
+  - a marker with no readable range gets `AGS3-DATA-4` instead; there is nothing to report the reading of
 
 Notes:
 

@@ -7,11 +7,12 @@
 // it comes from how site logs are actually written. They are reported under the
 // AGS3-DATA-* code space to keep them distinct from AGS3-RULE-* conformance.
 //
-// Four rules:
+// Five checks:
 //   AGS3-DATA-1  a depth range falls outside the core run it is recorded against
 //   AGS3-DATA-2  the void the remark describes disagrees with CORE_PREC
 //   AGS3-DATA-3  a depth pair is written high-low
 //   AGS3-DATA-4  a marker is present but no depth range can be read from it
+//   AGS3-DATA-5  the intervals that were read, reported whether or not they are wrong
 
 const { createDataDiagnostic } = require("./diagnostics");
 
@@ -130,6 +131,7 @@ function checkCoreRemRow({ remark, runTop, runBase, recovery, solidRecovery }) {
       continue;
     }
 
+    const read = [];
     for (const [first, second] of anomaly.pairs) {
       const top = Math.min(first, second);
       const base = Math.max(first, second);
@@ -162,10 +164,28 @@ function checkCoreRemRow({ remark, runTop, runBase, recovery, solidRecovery }) {
         });
       }
 
+      read.push([top, base]);
       if (anomaly.consumesCore) {
         voidWritten += base - top;
         sawVoidRange = true;
       }
+    }
+
+    // What the remark was read as, reported whether or not anything is wrong
+    // with it. The depths here are the ones the other four checks -- and AGS
+    // Extractor's layer splitting -- act on, so a reviewer can confirm the
+    // reading without re-deriving it from the raw remark.
+    if (read.length) {
+      const spans = read.map(([top, base]) => `${top.toFixed(2)}-${base.toFixed(2)}m`).join(", ");
+      const total = round2(read.reduce((sum, [top, base]) => sum + (base - top), 0));
+      issues.push({
+        checkNumber: 5,
+        checkId: "ags3.core.rem.interval-read",
+        severity: "information",
+        message: read.length === 1
+          ? `CORE_REM records ${anomaly.label} at ${spans} (${total.toFixed(2)}m).`
+          : `CORE_REM records ${anomaly.label} at ${spans} (${total.toFixed(2)}m in total).`
+      });
     }
   }
 

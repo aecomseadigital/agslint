@@ -665,10 +665,39 @@ function dataDiagnostics(text) {
     String(diagnostic.code).startsWith("AGS3-DATA"));
 }
 
-run("CORE_REM data checks stay silent when the remark agrees with the run", () => {
+function problemDiagnostics(text) {
+  // AGS3-DATA-5 states what was read rather than what is wrong with it, so the
+  // tests below that assert "nothing to report" ignore it.
+  return dataDiagnostics(text).filter((diagnostic) => diagnostic.code !== "AGS3-DATA-5");
+}
+
+run("CORE_REM data checks report nothing wrong when the remark agrees with the run", () => {
   // 1m run at 80% recovery -> 0.20m of void, and the remark says exactly that.
-  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss=10.80-11.00m bgl"']));
+  const found = problemDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss=10.80-11.00m bgl"']));
   assert.deepEqual(found, []);
+});
+
+run("AGS3-DATA-5 reports every interval that was read, sound or not", () => {
+  const clean = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss=10.80-11.00m bgl"']));
+  assert.equal(clean.length, 1);
+  assert.equal(clean[0].code, "AGS3-DATA-5");
+  assert.equal(clean[0].severity, "information");
+  assert.equal(clean[0].checkId, "ags3.core.rem.interval-read");
+  assert.match(clean[0].message, /records core loss at 10\.80-11\.00m \(0\.20m\)/);
+
+  // Wash boring and cavity are read the same way, and several ranges under one
+  // marker are summarised with their total.
+  const cavity = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","50","50","Cavity 10.20-10.60m and 10.70-10.80m"']))
+    .find((diagnostic) => diagnostic.code === "AGS3-DATA-5");
+  assert.match(cavity.message, /records cavity at 10\.20-10\.60m, 10\.70-10\.80m \(0\.50m in total\)/);
+
+  const wash = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","100","100","Wash boring 10.20-10.60m"']))
+    .find((diagnostic) => diagnostic.code === "AGS3-DATA-5");
+  assert.match(wash.message, /records wash boring at 10\.20-10\.60m \(0\.40m\)/);
+
+  // A marker with no readable range has nothing to report the reading of.
+  const unreadable = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss noted"']));
+  assert.ok(!unreadable.some((diagnostic) => diagnostic.code === "AGS3-DATA-5"));
 });
 
 run("AGS3-DATA-1 flags a CORE_REM range outside its own core run", () => {
@@ -705,7 +734,7 @@ run("AGS3-DATA-3 surfaces transposed CORE_REM depths", () => {
 });
 
 run("AGS3-DATA-4 reports a marker with no readable range", () => {
-  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss noted"']));
+  const found = problemDiagnostics(coreAgs3(['"BH1","10.00","11.00","80","70","Core loss noted"']));
   assert.equal(found.length, 1);
   assert.equal(found[0].code, "AGS3-DATA-4");
   assert.equal(found[0].checkId, "ags3.core.rem.range-unreadable");
@@ -714,7 +743,7 @@ run("AGS3-DATA-4 reports a marker with no readable range", () => {
 run("CORE_REM checks ignore joint dip angles written as bare integer pairs", () => {
   // "J1 0-30 J2 30-60" are degrees. Reading them as depths would claim 90m of
   // void on a 1m run. CORE_PREC=38% implies 0.62m, which the real range matches.
-  const found = dataDiagnostics(coreAgs3([
+  const found = problemDiagnostics(coreAgs3([
     '"BH1","42.55","43.55","38","30","(Coreloss at 42.93-43.55m), Highly fractured J1 0-30 J2 30-60 J3 60-90"'
   ]));
   assert.deepEqual(found, []);
@@ -722,7 +751,7 @@ run("CORE_REM checks ignore joint dip angles written as bare integer pairs", () 
 
 run("wash boring is exempt from the CORE_REM recovery arithmetic", () => {
   // A washbored interval is not cored, so CORE_PREC says nothing about it.
-  const found = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","100","100","Wash boring 10.20-10.60m"']));
+  const found = problemDiagnostics(coreAgs3(['"BH1","10.00","11.00","100","100","Wash boring 10.20-10.60m"']));
   assert.deepEqual(found, []);
 
   const outside = dataDiagnostics(coreAgs3(['"BH1","10.00","11.00","100","100","Wash boring 20.20-20.60m"']))
